@@ -1,6 +1,16 @@
 const http = require('http'),
 	https = require('https'),
-	EventEmitter = require('events');
+	EventEmitter = require('events'),
+	Back = require('back');
+
+const backOptions = {
+	retries: 3,
+	minDelay: 1000, // Defaults to 500ms
+	maxDelay: 10000, // Defaults to infinity
+	// The following option is shown with its default value but you will most
+	// likely never define it as it creates the exponential curve.
+	factor: 2,
+};
 
 class CouchdbChangeEvents extends EventEmitter {
 	constructor({
@@ -56,6 +66,8 @@ class CouchdbChangeEvents extends EventEmitter {
 
 		this.checkHeartbeat();
 
+		this.retryAttempt;
+
 		if (autoConnect) {
 			this.connect();
 		}
@@ -71,6 +83,23 @@ class CouchdbChangeEvents extends EventEmitter {
 		}
 
 		global.setTimeout(this.checkHeartbeat.bind(this), 1000);
+	}
+
+
+	retry(err) {
+		var back = this.retryAttempt || (this.retryAttempt = new Back(backOptions));
+		return back.backoff(function (fail) {
+			if (fail) {
+				console.error('Retry failed with ' + err.message);
+				process.exit(1);
+			}
+			//
+			// Remark: .attempt and .timeout are added to this object internally
+			//
+			console.log('Retry attempt #' + back.settings.attempt +
+				' being made after ' + back.settings.timeout + 'ms');
+			this.connect();
+		});
 	}
 
 	connect() {
@@ -91,14 +120,14 @@ class CouchdbChangeEvents extends EventEmitter {
 				this.rawData = '';
 				this.couchDbConnection.on('data', this.onCouchdbChange.bind(this));
 				this.couchDbConnection.on('end', this.reconnect.bind(this));
+				this.retryAttempt = null;
 			} else {
 				response.destroy();
 				this.emitError(new Error('not_couchdb'));
-				this.reconnect();
 			}
 		}).on('error', (error) => {
 			this.emitError(error);
-			this.reconnect();
+			this.retry(error).bind(this);
 		}).end();
 	}
 
