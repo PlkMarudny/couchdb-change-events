@@ -16,7 +16,8 @@ class CouchdbChangeEvents extends EventEmitter {
 		database,
 		view,
 		style,
-        conflicts = false
+		conflicts = false,
+		rejectUnauthorized = true
 	}) {
 		super();
 
@@ -44,7 +45,8 @@ class CouchdbChangeEvents extends EventEmitter {
 
 		this.style = style;
 		this.view = view;
-        this.conflicts = conflicts
+		this.conflicts = conflicts;
+		this.rejectUnauthorized = rejectUnauthorized;
 
 		this.heartbeat = parseInt(heartbeat, 10) || 2000;
 
@@ -119,8 +121,8 @@ class CouchdbChangeEvents extends EventEmitter {
 
 				let couchdbChange = JSON.parse(change, (key, value) =>
 					typeof value === 'string'
-					? value.replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0')
-					: value
+						? value.replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0')
+						: value
 				);
 
 				if (couchdbChange.error) {
@@ -166,10 +168,10 @@ class CouchdbChangeEvents extends EventEmitter {
 		if (this.includeDocs) {
 			couchDbPath += '&include_docs=true';
 		}
-                                      
-        if (this.conflicts) {
-            couchDbPath += '&conflicts=true';
-        }
+
+		if (this.conflicts) {
+			couchDbPath += '&conflicts=true';
+		}
 
 		if (this.lastEventId) {
 			let lastEventId = encodeURIComponent(this.lastEventId);
@@ -198,7 +200,9 @@ class CouchdbChangeEvents extends EventEmitter {
 			port: this.port,
 			path: couchDbPath,
 			method: 'get',
-			auth: auth
+			auth: auth,
+			headers: { 'content-type': 'application/json' },
+			rejectUnauthorized: this.rejectUnauthorized
 		};
 	}
 }
