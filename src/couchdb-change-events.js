@@ -157,27 +157,6 @@ class CouchdbChangeEvents extends EventEmitter {
 		global.setTimeout(this.connect.bind(this), this.delay);
 	}
 
-	// A function that keeps trying, "toTry" until it returns true or has
-	// tried "max" number of times. First retry has a delay of "delay".
-	// "callback" is called upon success.
-	exponentialBackoff(toTry, max, delay, callback) {
-		console.log('max', max, 'next delay', delay);
-		var result = toTry();
-
-		if (result) {
-			callback(result);
-		} else {
-			if (max > 0) {
-				setTimeout(function () {
-					exponentialBackoff(toTry, --max, delay * 2, callback);
-				}, delay);
-
-			} else {
-				console.log('we give up');
-			}
-		}
-	}
-
 	setCouchdbStatus(status) {
 		if (this.couchdbStatus !== status) {
 			this.couchdbStatus = status;
