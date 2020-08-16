@@ -17,7 +17,8 @@ class CouchdbChangeEvents extends EventEmitter {
 		view,
 		style,
 		conflicts = false,
-		rejectUnauthorized = true
+		rejectUnauthorized = true,
+		delay = 100
 	}) {
 		super();
 
@@ -47,6 +48,9 @@ class CouchdbChangeEvents extends EventEmitter {
 		this.view = view;
 		this.conflicts = conflicts;
 		this.rejectUnauthorized = rejectUnauthorized;
+
+		this.initialDelay = Math.floor(delay/2);
+		this.delay = delay;
 
 		this.heartbeat = parseInt(heartbeat, 10) || 2000;
 
@@ -106,6 +110,7 @@ class CouchdbChangeEvents extends EventEmitter {
 
 	onCouchdbChange(data) {
 		this.setCouchdbStatus(this.COUCHDB_STATUS_CONNECTED);
+		this.delay = this.initialDelay;
 
 		this.lastHeartBeat = new Date().getTime();
 
@@ -147,8 +152,9 @@ class CouchdbChangeEvents extends EventEmitter {
 
 	reconnect() {
 		this.setCouchdbStatus(this.COUCHDB_STATUS_DISCONNECTED);
-
-		global.setTimeout(this.connect.bind(this), 1000);
+		this.delay = this.delay*2;
+		console.log(`${new Date().toUTCString()}, delay: ${this.delay}`);
+		global.setTimeout(this.connect.bind(this), this.delay);
 	}
 
 	// A function that keeps trying, "toTry" until it returns true or has
